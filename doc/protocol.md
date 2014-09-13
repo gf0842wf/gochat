@@ -156,13 +156,13 @@ haproxy进行tcp负载均衡反向代理
 
 	用户到xx的离线消息(hash) msg:offline:`uid`=>`target_uid`=>`message`
 	target_uid:见下面的消息协议说明
-	message:
+	message:(json)
 	{
-		"content":"",
-		"send_time":0,
-		"flag1":uint32,
-		"flag2":byte,
-		"flag3":byte
+		"st":0, # 发送时间,unix时间戳(单位ms, uint64)
+		"flg1":uint32,
+		"flg2":byte,
+		"flg3":byte,
+		"ctx":"", # 消息内容
 	}
 
 ## 在线消息 ##
@@ -174,7 +174,7 @@ haproxy进行tcp负载均衡反向代理
 消息长度(4bytes)+消息类型(byte)+消息体
 
 
-- 握手 shake
+- 握手 shake  加密只加密消息类型和消息体,握手消息不加密,心跳消息不加密
         
         消息类型: 0
 
@@ -189,7 +189,7 @@ haproxy进行tcp负载均衡反向代理
         <=客户端发送心跳 消息体为空
         服务端不用回应
 
-- 认证 auth
+- 认证 auth  认证时要检查是否是已经登录过了,踢掉原连接,清除状态(先下线后上线)
 
         消息类型: 2
 
@@ -289,4 +289,14 @@ haproxy进行tcp负载均衡反向代理
 
 		消息体同聊天消息
 
+- 用户二进制消息    `采用二进制格式`
+
+        消息类型: 100
+        消息体: to(4bytes,uint32)+from(4bytes,uint32)+line(1byte)+send_time(uint64,8bytes)+ctx(nbytes)
+
+- 其他消息一律过滤
+
 ## IPC消息 ##
+
+- 跨服通知上线消息(踢掉旧连接用)(用户上线后广播到各服)
+- 跨服聊天消息转发

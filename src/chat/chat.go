@@ -1,24 +1,22 @@
 package main
 
-// 节点服务器,客户端连接到此
+// 聊天服务器(一般多个),客户端连接到此
 
 import (
 	"fmt"
 	"net"
-	"net/tcpserver"
-	"net/tcpserver/endpoint"
 )
 
-var SID uint32
-
-func init() {
-	SID = 1
-}
+import (
+	"tcpserver"
+	"tcpserver/endpoint"
+	"types"
+)
 
 type Bot struct {
 	endpoint.EndPoint
 
-	UID     uint32
+	User    *types.User
 	Manager *TCPServerManager
 }
 
@@ -27,7 +25,7 @@ func (bot *Bot) OnConnectionLost(err error) {
 	fmt.Println(bot.Manager.Clients)
 
 	bot.Ctrl <- false
-	delete(bot.Manager.Clients, bot.ID)
+	delete(bot.Manager.Clients, bot.User.UID)
 }
 
 func (bot *Bot) Handle() {
@@ -37,6 +35,8 @@ func (bot *Bot) Handle() {
 			fmt.Println("Recv:", string(data))
 			bot.PutData(data)
 			// to do something
+		case data := <-bot.User.MQ: // internal IPC
+			fmt.Println("MQ:", data)
 		}
 	}
 }
@@ -50,11 +50,9 @@ func (m *TCPServerManager) connectionHandler(conn *net.TCPConn) {
 	bot := &Bot{}
 	bot.Init(conn, 10, 16, 12)
 	bot.InitCBs(bot.OnConnectionLost, nil, nil)
-	bot.ID = SID
 	bot.Manager = m
-	SID++
 
-	m.Clients[bot.ID] = bot
+	//m.Clients[bot.User.UID] = bot
 
 	go bot.Handle()
 	bot.Start()
@@ -67,7 +65,7 @@ func (m *TCPServerManager) Start() {
 
 func main() {
 	manager := &TCPServerManager{Address: ":7005"}
-	manager.Clients = make(map[uint32]*Bot, 100)
+	manager.Clients = make(map[uint32]*Bot, 1000)
 	go manager.Start()
 
 	waiting := make(chan bool)
