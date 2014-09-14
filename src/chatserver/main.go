@@ -8,6 +8,7 @@ import (
 )
 
 import (
+	//"share"
 	"tcpserver"
 	"tcpserver/endpoint"
 	"types"
@@ -22,10 +23,12 @@ type Bot struct {
 
 func (bot *Bot) OnConnectionLost(err error) {
 	fmt.Println("Connection Lost:", err.Error())
-	fmt.Println(bot.Manager.Clients)
+	//fmt.Println(bot.Manager.Clients)
 
 	bot.Ctrl <- false
-	delete(bot.Manager.Clients, bot.User.UID)
+	if bot.User.UID > 0 {
+		delete(bot.Manager.Clients, bot.User.UID)
+	}
 }
 
 func (bot *Bot) Handle() {
@@ -33,8 +36,16 @@ func (bot *Bot) Handle() {
 		select {
 		case data := <-bot.RecvBox:
 			fmt.Println("Recv:", string(data))
-			bot.PutData(data)
-			// to do something
+			ack, err := HandleNetProto(bot, data)
+			if err != nil {
+				// 断开连接
+				fmt.Println(err.Error())
+				bot.Conn.Close()
+				return
+			}
+			if ack != nil {
+				bot.PutData(ack)
+			}
 		case data := <-bot.User.MQ: // internal IPC
 			fmt.Println("MQ:", data)
 		}
@@ -48,11 +59,14 @@ type TCPServerManager struct {
 
 func (m *TCPServerManager) connectionHandler(conn *net.TCPConn) {
 	bot := &Bot{}
-	bot.Init(conn, 10, 16, 12)
+	bot.Init(conn, 180, 16, 12)
 	bot.InitCBs(bot.OnConnectionLost, nil, nil)
 	bot.Manager = m
+	user := types.NewUser()
+	bot.User = user
 
-	//m.Clients[bot.User.UID] = bot
+	m.Clients[bot.User.UID] = bot
+	//share.Clients[bot.User.UID] = user
 
 	go bot.Handle()
 	bot.Start()
