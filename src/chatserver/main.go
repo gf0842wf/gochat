@@ -8,7 +8,7 @@ import (
 )
 
 import (
-	//"share"
+	"share"
 	"tcpserver"
 	"tcpserver/endpoint"
 	"types"
@@ -23,11 +23,11 @@ type Bot struct {
 
 func (bot *Bot) OnConnectionLost(err error) {
 	fmt.Println("Connection Lost:", err.Error())
-	//fmt.Println(bot.Manager.Clients)
 
 	bot.Ctrl <- false
 	if bot.User.UID > 0 {
-		delete(bot.Manager.Clients, bot.User.UID)
+		//delete(bot.Manager.Clients, bot.User.UID)
+		share.Clients.Delete(bot.User.UID)
 	}
 }
 
@@ -54,7 +54,7 @@ func (bot *Bot) Handle() {
 
 type TCPServerManager struct {
 	Address string
-	Clients map[uint32]*Bot // 这个应该加锁,如果是多核的话
+	//Clients map[uint32]*Bot // 这个应该加锁,如果是多核的话
 }
 
 func (m *TCPServerManager) connectionHandler(conn *net.TCPConn) {
@@ -62,11 +62,11 @@ func (m *TCPServerManager) connectionHandler(conn *net.TCPConn) {
 	bot.Init(conn, 180, 16, 12)
 	bot.InitCBs(bot.OnConnectionLost, nil, nil)
 	bot.Manager = m
-	user := types.NewUser()
+	user := types.NewUser(8)
 	bot.User = user
 
-	m.Clients[bot.User.UID] = bot
-	//share.Clients[bot.User.UID] = user
+	//m.Clients[bot.User.UID] = bot
+	share.Clients.Set(bot.User.UID, user)
 
 	go bot.Handle()
 	bot.Start()
@@ -79,7 +79,7 @@ func (m *TCPServerManager) Start() {
 
 func main() {
 	manager := &TCPServerManager{Address: ":7005"}
-	manager.Clients = make(map[uint32]*Bot, 1000)
+	//manager.Clients = make(map[uint32]*Bot, 1000)
 	go manager.Start()
 
 	waiting := make(chan bool)

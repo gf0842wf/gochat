@@ -59,12 +59,13 @@ func handle_chat(user *types.User, pObj *types.Msg) (ack []byte, err error) {
 	//	return
 	//}
 
-	target, ok := share.Clients[to.(uint32)]
-	if !ok {
+	target := share.Clients.Get(to.(uint32))
+	if target == nil {
 		// TODO: 不在本服,发送到hub服务器,由它转发
 	}
-	target.MQ <- *pObj
-	fmt.Println(target)
+	targetUser := target.(types.User)
+	targetUser.MQ <- []byte{1, 2}
+	fmt.Println(targetUser)
 
 	return
 }

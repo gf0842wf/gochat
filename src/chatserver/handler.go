@@ -9,23 +9,18 @@ import (
 
 import (
 	"protos"
-	"types"
+	//"types"
 )
 
 // network protocol
 func HandleNetProto(bot *Bot, data []byte) (ack []byte, err error) {
-	var obj types.Msg
+	// 解密
 	bot.User.Coder.Decode(data)
-	err, _ = types.Unmarshal(data, &obj)
-	if err != nil {
-		fmt.Println("HandleNetProto decode err:", err.Error())
-		return
-	}
 
-	msgType := obj.MsgType
+	msgType := data[0]
 	fmt.Println("msgType:", msgType)
 	if handle, ok := protos.NetProtoHandlers[msgType]; ok {
-		ack, err = handle(bot.User, &obj)
+		ack, err = handle(bot.User, data)
 	} else {
 		err = errors.New("unknown msgType")
 	}

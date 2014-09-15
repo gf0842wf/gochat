@@ -1,6 +1,6 @@
 # 聊天服务器协议 #
 
-`所有时间为unix时间戳且为整数,单位ms,其中uid,sid是数字(在redis中是字符串),gid是字符串`  
+`所有时间为unix时间戳且为整数,单位ms,其中uid,sid是数字(在redis中是字符串),gid是字符串最大32bytes`  
 `now = int(time.time()*1000)`
 
 ## 前端部署 ##
@@ -56,7 +56,7 @@ haproxy进行tcp负载均衡反向代理
 		mode tcp
 		maxconn 100000
 		log 127.0.0.1 local0 debug
-		server s1 192.168.1.111:9001 weight 1 # 这个可以部署haproxy,但是最好别
+		server s1 192.168.1.111:9001 weight 1 # 这个可以部署haproxy
 		server s1 192.168.1.112:9001 weight 5
 		server s1 192.168.1.113:9001 weight 5
 		server s1 192.168.1.114:9001 weight 5
@@ -158,10 +158,12 @@ haproxy进行tcp负载均衡反向代理
 	target_uid:见下面的消息协议说明
 	message:(json)
 	{
+		"type":4/5, # 通知消息和聊天消息
 		"st":0, # 发送时间,unix时间戳(单位ms, uint64)
-		"flg1":uint32,
+		"flg1":byte,
 		"flg2":byte,
 		"flg3":byte,
+		"flg4":byte,
 		"ctx":"", # 消息内容
 	}
 
@@ -169,7 +171,7 @@ haproxy进行tcp负载均衡反向代理
 暂不保存
 
 ## 消息协议 ##
-消息体暂时采用 json  
+每个消息分为json版和二进制版本  
 中文采用utf8编码  
 消息长度(4bytes)+消息类型(byte)+消息体
 
@@ -178,16 +180,16 @@ haproxy进行tcp负载均衡反向代理
         
         消息类型: 0
 
-        <=客户端发送握手准备消息 {"type":"PRE"}
-        =>服务器发送key给客户端 {"type":"REQ", "key":uint32}
-        <=客户端响应握手结果 {"type":"ACK", "code":byte(0-ok,其它-ng踢掉此连接)}
+        <=客户端发送握手准备消息 {"subtype":0(byte)}
+        =>服务器发送key给客户端 {"subtype":1(byte), "key":uint32}
+        <=客户端响应握手成功 {"subtype":2(byte)}
 
 - 心跳 heartbeat
 
         消息类型: 1
 
         <=客户端发送心跳 消息体为空
-        服务端不用回应
+        服务端不用回应(向hub服务器广播该用户在线,心跳90s, 服务端等待300s断开客户端连接)
 
 - 认证 auth  认证时要检查是否是已经登录过了,踢掉原连接,清除状态(先下线后上线)
 
@@ -196,7 +198,7 @@ haproxy进行tcp负载均衡反向代理
         <=客户端发送用户名密码 {"uid":36, "password":""}
         =>服务器响应认证结果 {"code":byte(0-ok,其它-ng)}
 
-- 请求离线消息 check offline message
+- 请求离线消息 check offline message (同时实现http)
 
 		消息类型: 3 
 
@@ -205,33 +207,41 @@ haproxy进行tcp负载均衡反向代理
 		[
 	    	{消息体,见聊天消息},
 		]
+		二进制版本如下:
+		消息条数(uint32)+消息1+"\xef\xff"+"消息2"..., 每条消息用 \xef\xff 分割
 
-- 聊天 chat
+- 聊天 chat (发送消息同时实现http))
 
         消息类型: 4
 
         服务端负责转发消息的,如果目标不在线要把消息的online改为0存储待转发
 
     	{
-			"line":byte, # 0-离线消息, 1-在线消息
-			"from":36, # uid    uint32, [1, 50)系统预留, [50, 150)聊天室, [150, 1000)预留, [1000, +∞)用户
 			"to":38, # target_uid    uint32, [1, 50)系统预留, [50, 150)聊天室, [150, 1000)预留, [1000, +∞)用户
+			"from":36, # uid    uint32, [1, 50)系统预留, [50, 150)聊天室, [150, 1000)预留, [1000, +∞)用户
+			"line":byte, # 0-离线消息, 1-在线消息
 			"st":0, # 发送时间,unix时间戳(单位ms, uint64)
-			"flg1":uint32,
+			"flg1":byte,
 			"flg2":byte,
 			"flg3":byte,
+			"flg4":byte,
 			"ctx":"", # 消息内容
     	}
         
+- 通知    `添加好友会有通知消息发给对方,等等` 
+	
+		消息类型: 5
 
-- 命令 cmd
+		消息体同聊天消息
+
+- 命令 cmd ((同时实现http))
     
-        消息类型: 5
+        消息类型: 6
         
         添加分组
         <=
         {
-            "type":"group",
+            "type": "group",
             "group":"同事",
             "action":"add"
         }
@@ -283,16 +293,19 @@ haproxy进行tcp负载均衡反向代理
             ]
         }
 
-- 通知    `添加好友会有通知消息发给对方(可以配置是否通知),等等`
-	
-		消息类型: 6
+- (续)命令 二进制形式
 
-		消息体同聊天消息
-
-- 用户二进制消息    `采用二进制格式` 暂时不实现
-
-        消息类型: 100
-        消息体: to(4bytes,uint32)+from(4bytes,uint32)+line(1byte)+send_time(uint64,8bytes)+ctx(nbytes)
+		{
+			"type":byte,
+			"action":byte,
+			"user":uint32,
+			"group":string(固定32)
+		}
+		type:0-group, 1-user
+		action:0-add, 1-del,2-getall
+		
+		getall的响应消息
+		code(byte)+gid(32bytes)+uid1+uid2+..+"\xef\xff"+gid(32bytes)+...
 
 - 其他消息一律过滤
 

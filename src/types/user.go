@@ -1,9 +1,5 @@
 package types
 
-import (
-//"protos"
-)
-
 type User struct {
 	UID      uint32 // 用户id
 	SID      string // 用户所在服
@@ -18,11 +14,11 @@ type User struct {
 
 	Coder *Coder
 
-	MQ chan Msg //IPCObj // User之间通信队列
+	MQ chan []byte // User之间通信队列
 }
 
-func NewUser() *User {
-	mq := make(chan Msg)
+func NewUser(mqBufSize int) *User {
+	mq := make(chan []byte, mqBufSize)
 	coder := NewCoder()
 	sid := "0" // TODO: SID通过配置获取
 	return &User{Online: true, MQ: mq, SID: sid, Coder: coder}
