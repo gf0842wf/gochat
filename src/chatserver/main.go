@@ -35,7 +35,8 @@ func (bot *Bot) Handle() {
 	for {
 		select {
 		case data := <-bot.RecvBox:
-			fmt.Println("Recv:", string(data))
+			// 解密
+			bot.User.Coder.Decode(data)
 			ack, err := HandleNetProto(bot, data)
 			if err != nil {
 				// 断开连接
@@ -44,6 +45,8 @@ func (bot *Bot) Handle() {
 				return
 			}
 			if ack != nil {
+				// 加密
+				bot.User.Coder.Encode(data)
 				bot.PutData(ack)
 			}
 		case data := <-bot.User.MQ: // internal IPC

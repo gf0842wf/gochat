@@ -14,9 +14,6 @@ import (
 
 // network protocol
 func HandleNetProto(bot *Bot, data []byte) (ack []byte, err error) {
-	// 解密
-	bot.User.Coder.Decode(data)
-
 	msgType := data[0]
 	fmt.Println("msgType:", msgType)
 	if handle, ok := protos.NetProtoHandlers[msgType]; ok {

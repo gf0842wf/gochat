@@ -17,8 +17,7 @@ func handle_shake(user *types.User, msg []byte) (ack []byte, err error) {
 	subType := msg[0]
 	buf := new(bytes.Buffer)
 	if subType == 0 {
-		var subType0 byte = 1
-		binary.Write(buf, binary.BigEndian, subType0)
+		binary.Write(buf, binary.BigEndian, byte(1))
 		binary.Write(buf, binary.BigEndian, user.Coder.CryptKey)
 		ack = buf.Bytes()
 	} else if subType == 2 {
