@@ -67,7 +67,7 @@ func (m *TCPServerManager) connectionHandler(conn *net.TCPConn) {
 	bot.Init(conn, 300, 16, 12)
 	bot.InitCBs(bot.OnConnectionLost, nil, nil)
 	bot.Manager = m
-	user := types.NewUser(32)
+	user := types.NewUser(16) // 这个参数是聊天发送队列
 	bot.User = user
 
 	go bot.Handle()

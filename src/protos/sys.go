@@ -14,9 +14,8 @@ import (
 )
 
 func handle_shake(user *types.User, msg []byte) (ack []byte, err error) {
-	msg = msg[1:]
-
-	subType := msg[0]
+	// msg[0]: msgType
+	subType := msg[1]
 
 	if subType == 0 {
 		ack = zpack.Pack('>', []interface{}{byte(0), byte(1), user.Coder.CryptKey})
@@ -36,16 +35,15 @@ func handle_nop(user *types.User, msg []byte) (ack []byte, err error) {
 }
 
 func handle_login(user *types.User, msg []byte) (ack []byte, err error) {
-	msg = msg[1:]
-
 	if !user.Coder.Shaked {
 		err = errors.New("handle_login: not shaked")
 		return
 	}
 
-	s := fmt.Sprint(">I", len(msg)-4, "B")
-	InB := zpack.Unpack(s, msg)
-	uid, password := InB[0], InB[1]
+	s := fmt.Sprint(">BI", len(msg)-5, "B")
+	BInB := zpack.Unpack(s, msg)
+	// BInB[0]:msgType
+	uid, password := BInB[1], BInB[2]
 
 	if true { // TODO: 向hub服务器发送用户名密码请求登录(http接口?)
 		fmt.Println("Login:", uid.(uint32), string(password.([]byte)))
