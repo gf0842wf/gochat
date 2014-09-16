@@ -3,69 +3,35 @@ package protos
 // 包括聊天,请求离线消息,通知
 
 import (
+	"errors"
 	"fmt"
 )
 
 import (
-	"errors"
+	"misc/zpack"
 	"share"
 	"types"
 )
 
-func handle_chat(user *types.User, pObj *types.Msg) (ack []byte, err error) {
+func handle_chat(user *types.User, msg []byte) (ack []byte, err error) {
 	if !user.Coder.Shaked && !user.Logined {
 		err = errors.New("not shaked or not logined")
 		return
 	}
 
-	//line, ok := (*(pObj.MsgJson))["line"]
-	//if !ok {
-	//	err = errors.New("no line field")
-	//	return
-	//}
-	//from, ok := (*(pObj.MsgJson))["from"]
-	//if !ok {
-	//	err = errors.New("no from field")
-	//	return
-	//}
-	to, ok := (*(pObj.MsgJson))["to"]
-	if !ok {
-		err = errors.New("no to field")
-		return
-	}
-	//st, ok := (*(pObj.MsgJson))["st"]
-	//if !ok {
-	//	err = errors.New("no st field")
-	//	return
-	//}
-	//flg1, ok := (*(pObj.MsgJson))["flg1"]
-	//if !ok {
-	//	//err = errors.New("no flg1 field")
-	//	//return
-	//}
-	//flg2, ok := (*(pObj.MsgJson))["flg2"]
-	//if !ok {
-	//	//err = errors.New("no flg2 field")
-	//	//return
-	//}
-	//flg3, ok := (*(pObj.MsgJson))["flg3"]
-	//if !ok {
-	//	//err = errors.New("no flg3 field")
-	//	//return
-	//}
-	//ctx, ok := (*(pObj.MsgJson))["ctx"]
-	//if !ok {
-	//	err = errors.New("no ctx field")
-	//	return
-	//}
+	_s := ">IIBQ4B"
+	s := fmt.Sprint(_s, (len(msg) - zpack.CalcSize(_s)), "B")
+
+	IIBQ4BnB := zpack.Unpack(s, msg)
+	to := IIBQ4BnB[0]
 
 	target := share.Clients.Get(to.(uint32))
 	if target == nil {
+		fmt.Println("forward:", to)
 		// TODO: 不在本服,发送到hub服务器,由它转发
+	} else {
+		targetUser := target.(*types.User)
+		targetUser.MQ <- msg
 	}
-	targetUser := target.(types.User)
-	targetUser.MQ <- []byte{1, 2}
-	fmt.Println(targetUser)
-
 	return
 }

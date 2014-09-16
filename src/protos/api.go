@@ -13,7 +13,7 @@ func init() {
 		2: handle_login,
 
 		//3: handle_offline,
-		//4: handle_chat,
+		4: handle_chat,
 		//6: handle_notify,
 
 		//5: handle_cmd,

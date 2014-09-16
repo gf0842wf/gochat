@@ -84,7 +84,8 @@ func (ep *EndPoint) recvData() {
 
 // 如果封包方式不同,需要修改这个函数,或者通过外部传入回调的方式
 func (ep *EndPoint) rawRecv() (n int, err error) {
-	// header: 本来应该在全局定义来减少分配的, 但是为了封装需要, 在这里定义
+	// 接受解析长度了
+	// header
 	header := make([]byte, 4)
 	n, err = io.ReadFull(ep.Conn, header)
 	if err != nil {
@@ -136,17 +137,19 @@ func (ep *EndPoint) sendData() {
 }
 
 // 如果封包方式不同,需要修改这个函数,或者通过外部传入回调的方式
-func (ep *EndPoint) rawSend(msg []byte) {
-	// header: 本来应该在全局定义来减少分配的, 但是为了封装需要, 在这里定义
+func (ep *EndPoint) rawSend(data []byte) {
+	// 发送封装长度
+	// header
 	header := make([]byte, 4)
-	length := len(msg)
+	length := len(data)
 	binary.BigEndian.PutUint32(header, uint32(length))
-	data := append(header, msg...)
+	data = append(header, data...)
 	n, err := ep.Conn.Write(data)
 	if err != nil {
 		fmt.Println("[EP] Error send reply, bytes:", n, "reason:", err)
 		return
 	}
+	fmt.Println("raw send:", data)
 }
 
 func (ep *EndPoint) Start() {

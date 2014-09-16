@@ -3,23 +3,21 @@ package protos
 // 包括握手,心跳,登录
 
 import (
+	"errors"
 	"fmt"
 )
 
 import (
-	"bytes"
-	"encoding/binary"
-	"errors"
+	"misc/zpack"
+	"share"
 	"types"
 )
 
 func handle_shake(user *types.User, msg []byte) (ack []byte, err error) {
 	subType := msg[0]
-	buf := new(bytes.Buffer)
+	fmt.Println(msg)
 	if subType == 0 {
-		binary.Write(buf, binary.BigEndian, byte(1))
-		binary.Write(buf, binary.BigEndian, user.Coder.CryptKey)
-		ack = buf.Bytes()
+		ack = zpack.Pack('>', []interface{}{byte(0), byte(1), user.Coder.CryptKey})
 	} else if subType == 2 {
 		user.Coder.Shaked = true
 		fmt.Println("Shaked:")
@@ -41,28 +39,23 @@ func handle_login(user *types.User, msg []byte) (ack []byte, err error) {
 		return
 	}
 
-	//uid, ok := (*(pObj.MsgJson))["uid"]
-	//if !ok {
-	//	err = errors.New("no uid field")
-	//	return
-	//}
-	//password, ok := (*(pObj.MsgJson))["password"]
-	//if !ok {
-	//	err = errors.New("no password field")
-	//	return
-	//}
+	s := fmt.Sprint(">I", len(msg)-4, "B")
+	InB := zpack.Unpack(s, msg)
+	uid, password := InB[0], InB[1]
 
-	//if true { // TODO: 向hub服务器发送用户名密码请求登录(http接口?)
-	//	fmt.Println("Login:", uid.(uint32), password.(string))
-	//	fmt.Println("Logined")
-	//	user.UID = uid.(uint32)
-	//	user.Password = password.(string)
-	//	user.Online = true
-	//	user.Logined = true
-	//	// TODO: 通知hub服务器该用户登录
-	//} else {
-	//	err = errors.New("login failed")
-	//}
+	if true { // TODO: 向hub服务器发送用户名密码请求登录(http接口?)
+		fmt.Println("Login:", uid.(uint32), string(password.([]byte)))
+		user.UID = uid.(uint32)
+		user.Password = string(password.([]byte))
+		user.Online = true
+		user.Logined = true
+		share.Clients.Set(user.UID, user)
+		// TODO: 通知hub服务器该用户登录
+		ack = zpack.Pack('>', []interface{}{byte(2), byte(0)})
+	} else {
+		err = errors.New("login failed")
+		//ack = zpack.Pack('>', []interface{}{byte(2), byte(1)})
+	}
 
 	return
 }

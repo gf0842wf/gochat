@@ -46,7 +46,7 @@ func (bot *Bot) Handle() {
 			}
 			if ack != nil {
 				// 加密
-				bot.User.Coder.Encode(data)
+				bot.User.Coder.Encode(ack)
 				bot.PutData(ack)
 			}
 		case data := <-bot.User.MQ: // internal IPC
@@ -57,19 +57,15 @@ func (bot *Bot) Handle() {
 
 type TCPServerManager struct {
 	Address string
-	//Clients map[uint32]*Bot // 这个应该加锁,如果是多核的话
 }
 
 func (m *TCPServerManager) connectionHandler(conn *net.TCPConn) {
 	bot := &Bot{}
-	bot.Init(conn, 180, 16, 12)
+	bot.Init(conn, 300, 16, 12)
 	bot.InitCBs(bot.OnConnectionLost, nil, nil)
 	bot.Manager = m
 	user := types.NewUser(8)
 	bot.User = user
-
-	//m.Clients[bot.User.UID] = bot
-	share.Clients.Set(bot.User.UID, user)
 
 	go bot.Handle()
 	bot.Start()
@@ -82,7 +78,6 @@ func (m *TCPServerManager) Start() {
 
 func main() {
 	manager := &TCPServerManager{Address: ":7005"}
-	//manager.Clients = make(map[uint32]*Bot, 1000)
 	go manager.Start()
 
 	waiting := make(chan bool)
