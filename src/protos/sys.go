@@ -14,8 +14,10 @@ import (
 )
 
 func handle_shake(user *types.User, msg []byte) (ack []byte, err error) {
+	msg = msg[1:]
+
 	subType := msg[0]
-	fmt.Println(msg)
+
 	if subType == 0 {
 		ack = zpack.Pack('>', []interface{}{byte(0), byte(1), user.Coder.CryptKey})
 	} else if subType == 2 {
@@ -34,6 +36,8 @@ func handle_nop(user *types.User, msg []byte) (ack []byte, err error) {
 }
 
 func handle_login(user *types.User, msg []byte) (ack []byte, err error) {
+	msg = msg[1:]
+
 	if !user.Coder.Shaked {
 		err = errors.New("handle_login: not shaked")
 		return

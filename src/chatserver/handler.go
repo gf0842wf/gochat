@@ -17,7 +17,7 @@ func HandleNetProto(bot *Bot, data []byte) (ack []byte, err error) {
 	msgType := data[0]
 	fmt.Println("msgType:", msgType)
 	if handle, ok := protos.NetProtoHandlers[msgType]; ok {
-		ack, err = handle(bot.User, data[1:]) // 去掉msgType
+		ack, err = handle(bot.User, data) // 未去掉msgType
 	} else {
 		err = errors.New("unknown msgType")
 	}

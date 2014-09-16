@@ -51,6 +51,9 @@ func (bot *Bot) Handle() {
 			}
 		case data := <-bot.User.MQ: // internal IPC
 			fmt.Println("MQ:", data)
+			// 加密
+			bot.User.Coder.Encode(data)
+			bot.PutData(data)
 		}
 	}
 }
@@ -64,7 +67,7 @@ func (m *TCPServerManager) connectionHandler(conn *net.TCPConn) {
 	bot.Init(conn, 300, 16, 12)
 	bot.InitCBs(bot.OnConnectionLost, nil, nil)
 	bot.Manager = m
-	user := types.NewUser(8)
+	user := types.NewUser(32)
 	bot.User = user
 
 	go bot.Handle()

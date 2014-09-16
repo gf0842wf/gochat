@@ -14,15 +14,17 @@ import (
 )
 
 func handle_chat(user *types.User, msg []byte) (ack []byte, err error) {
+	msg1 := msg[1:]
+
 	if !user.Coder.Shaked && !user.Logined {
 		err = errors.New("not shaked or not logined")
 		return
 	}
 
 	_s := ">IIBQ4B"
-	s := fmt.Sprint(_s, (len(msg) - zpack.CalcSize(_s)), "B")
+	s := fmt.Sprint(_s, (len(msg1) - zpack.CalcSize(_s)), "B")
 
-	IIBQ4BnB := zpack.Unpack(s, msg)
+	IIBQ4BnB := zpack.Unpack(s, msg1)
 	to := IIBQ4BnB[0]
 
 	target := share.Clients.Get(to.(uint32))
