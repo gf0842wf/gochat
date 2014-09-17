@@ -1,7 +1,8 @@
 # 聊天服务器协议 #
 
 `所有时间为unix时间戳且为整数,单位ms,其中uid,sid是数字(在redis中是字符串),gid是字符串最大32bytes`  
-`now = int(time.time()*1000)`
+`now = int(time.time()*1000)`  
+`聊天消息内不能含连续的\xef\xff`
 
 ## 前端部署 ##
 haproxy进行tcp负载均衡反向代理
@@ -154,11 +155,11 @@ haproxy进行tcp负载均衡反向代理
 ## 离线消息 ##
 采用redis
 
-	用户到xx的离线消息(hash) msg:offline:`uid`=>`target_uid`=>`message`
-	target_uid:见下面的消息协议说明
+	用户到xx的离线消息(hash) msg:offline:`to_uid`=>`from_uid`=>`message`, 过期时间1年
+	to_uid:见下面的消息协议说明
 	message:(json)
 	{
-		"type":4/5, # 通知消息和聊天消息
+		"line":0,
 		"st":0, # 发送时间,unix时间戳(单位ms, uint64)
 		"flg1":byte,
 		"flg2":byte,
@@ -202,19 +203,15 @@ haproxy进行tcp负载均衡反向代理
 
 		消息类型: 3 
 
-		<=客户端请求离线消息 消息体为空
-		=>服务端发送离线消息(sort by send_time desc, group by uid)
-		[
-	    	{消息体,见聊天消息},
-		]
-		二进制版本如下:
-		消息条数(uint32)+消息1+"\xef\xff"+"消息2"..., 每条消息用 \xef\xff 分割
+		<=客户端请求离线消息 请求最大条数uint32, 0-全部请求 (服务器是队列存储,请求过就删除)
+		=>服务端发送离线消息(group by from_id, sort by send_time)
+		to(uin32)+<from1+消息1(见redis离线消息字段)>+"\xef\xff"+<from2+消息2(见redis离线消息字段)>..., 每条消息用 \xef\xff 分割
 
 - 聊天 chat (发送消息同时实现http))
 
         消息类型: 4
 
-        服务端负责转发消息的,如果目标不在线要把消息的online改为0存储待转发
+        服务端负责转发消息的,如果目标不在线/发送失败,要把消息的online改为0存储待转发
 
     	{
 			"to":38, # target_uid    uint32, [1, 50)系统预留, [50, 150)聊天室, [150, 1000)预留, [1000, +∞)用户
@@ -228,15 +225,15 @@ haproxy进行tcp负载均衡反向代理
 			"ctx":"", # 消息内容
     	}
         
-- 通知    `添加好友会有通知消息发给对方,等等` 
+- ×通知    `添加好友会有通知消息发给对方,等等` 
 	
-		消息类型: 5
+		消息类型: 6
 
 		消息体同聊天消息
 
 - 命令 cmd ((同时实现http))
     
-        消息类型: 6
+        消息类型: 5
         
         添加分组
         <=

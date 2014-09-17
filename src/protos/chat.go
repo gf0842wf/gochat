@@ -5,6 +5,7 @@ package protos
 import (
 	"errors"
 	"fmt"
+	"time"
 )
 
 import (
@@ -35,6 +36,30 @@ func handle_chat(user *types.User, msg []byte) (ack []byte, err error) {
 		targetUser := target.(*types.User)
 		targetUser.MQ <- msg
 	}
+
+	return
+}
+
+func handle_offchat(user *types.User, msg []byte) (ack []byte, err error) {
+	if !user.Coder.Shaked && !user.Logined {
+		err = errors.New("not shaked or not logined")
+		return
+	}
+
+	s := ">BI"
+	BI := zpack.Unpack(s, msg)
+
+	// BI[0]: msgType
+	maxSize := BI[1]
+
+	uid := user.UID
+	// TODO: 通过uid获取离线消息
+	data := func(uid uint32, maxSize uint32) (data []byte) {
+		//cell := []interface{}{byte(0), uint64(time.Now().Unix()), byte(0), byte(0), byte(0), byte(0), []byte{98, 99, 100}}
+		return zpack.Pack('>', []interface{}{byte(3), uid, uint32(10002), byte(0), uint64(time.Now().Unix()), byte(0), byte(0), byte(0), byte(0), byte(98), byte(99), byte(100), byte('\xef'), byte('\xff'), uint32(10002), byte(0), uint64(time.Now().Unix()), byte(0), byte(0), byte(0), byte(0), byte(100), byte(101), byte(102)})
+	}(uid, maxSize.(uint32))
+
+	user.MQ <- data
 
 	return
 }

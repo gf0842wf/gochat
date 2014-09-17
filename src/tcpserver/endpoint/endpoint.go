@@ -23,9 +23,10 @@ import (
 type EndPoint struct {
 	Conn *net.TCPConn
 
-	SendBox chan []byte // 发送缓冲管道
-	RecvBox chan []byte // 接收缓冲管道
-	Ctrl    chan bool   // 控制结束 EndPoint 所有协程的
+	SendBox    chan []byte // 发送缓冲管道
+	RecvBox    chan []byte // 接收缓冲管道
+	SendErrBox chan []byte // 发送失败缓冲管道
+	Ctrl       chan bool   // 控制结束 EndPoint 所有协程的
 
 	Heartbeat int64 // 心跳超时(s), < 0表示不设置心跳
 
@@ -34,12 +35,13 @@ type EndPoint struct {
 	RawSend          interface{} // func([]byte) 回调
 }
 
-func (ep *EndPoint) Init(conn *net.TCPConn, heartbeat int64, sendBufSize int, recvBufSize int) {
+func (ep *EndPoint) Init(conn *net.TCPConn, heartbeat int64, sendBufSize int, recvBufSize int, sendErrBufSize int) {
 	ep.Conn = conn
 	ep.Heartbeat = heartbeat
 	ep.Ctrl = make(chan bool)
 	ep.SendBox = make(chan []byte, sendBufSize)
 	ep.RecvBox = make(chan []byte, recvBufSize)
+	ep.SendErrBox = make(chan []byte, sendErrBufSize)
 }
 
 // 初始化回调函数
@@ -110,6 +112,10 @@ func (ep *EndPoint) onData(data []byte) {
 	ep.RecvBox <- data
 }
 
+func (ep *EndPoint) onErrData(data []byte) {
+	ep.SendErrBox <- data
+}
+
 func (ep *EndPoint) onConnectionLost(err error) {
 	fmt.Println("[EP] Connection Lost:", err.Error())
 	ep.Ctrl <- false
@@ -137,16 +143,17 @@ func (ep *EndPoint) sendData() {
 }
 
 // 如果封包方式不同,需要修改这个函数,或者通过外部传入回调的方式
-func (ep *EndPoint) rawSend(data []byte) {
+func (ep *EndPoint) rawSend(msg []byte) {
 	// 发送封装长度
 	// header
 	header := make([]byte, 4)
-	length := len(data)
+	length := len(msg)
 	binary.BigEndian.PutUint32(header, uint32(length))
-	data = append(header, data...)
+	data := append(header, msg...)
 	n, err := ep.Conn.Write(data)
 	if err != nil {
 		fmt.Println("[EP] Error send reply, bytes:", n, "reason:", err)
+		ep.onErrData(msg)
 		return
 	}
 	fmt.Println("raw send:", data)
