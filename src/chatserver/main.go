@@ -49,11 +49,15 @@ func (bot *Bot) Handle() {
 				bot.User.Coder.Encode(ack)
 				bot.PutData(ack)
 			}
-		case data := <-bot.User.MQ:
+		case data := <-bot.User.MQ: // 转发聊天消息
 			fmt.Println("MQ:", data)
 			// 加密
 			bot.User.Coder.Encode(data)
 			bot.PutData(data)
+		case data := <-bot.SendErrBox: // 发送失败,识为离线消息
+			// 解密
+			bot.User.Coder.Decode(data)
+			fmt.Println("offchat:", data)
 		}
 	}
 }
