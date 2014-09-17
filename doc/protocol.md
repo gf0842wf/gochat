@@ -1,8 +1,8 @@
 # 聊天服务器协议 #
 
-`所有时间为unix时间戳且为整数,单位ms,其中uid,sid是数字(在redis中是字符串),gid是字符串最大32bytes`  
+`所有时间为unix时间戳且为整数,单位ms,其中uid,sid是数字(在redis中是字符串),gid是字符串最大24bytes`  
 `now = int(time.time()*1000)`  
-`聊天消息内不能含连续的\xef\xff`
+`聊天消息和分组名内不能含连续的\xef\xff`
 
 ## 前端部署 ##
 haproxy进行tcp负载均衡反向代理
@@ -299,10 +299,14 @@ haproxy进行tcp负载均衡反向代理
 			"group":string(固定32)
 		}
 		type:0-group, 1-user
-		action:0-add, 1-del,2-getall
+		action:0-add, 1-del, 2-getall
 		
+        普通响应消息
+        byte, 0-成功, 其它-失败
+
 		getall的响应消息
-		code(byte)+gid(32bytes)+uid1+uid2+..+"\xef\xff"+gid(32bytes)+...
+		失败:1(byte)
+        成功:0(byte)+gid(24bytes)+uid1+uid2+..+"\xef\xff"+gid(24bytes)+...
 
 - 其他消息一律过滤
 
