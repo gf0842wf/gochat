@@ -9,7 +9,6 @@ import (
 
 import (
 	"protos"
-	//"types"
 )
 
 // network protocol
@@ -17,7 +16,7 @@ func HandleNetProto(bot *Bot, data []byte) (ack []byte, err error) {
 	msgType := data[0]
 	fmt.Println("UID:", bot.User.UID, "msgType:", msgType)
 	if handle, ok := protos.NetProtoHandlers[msgType]; ok {
-		ack, err = handle(bot.User, data) // 未去掉msgType
+		ack, err = handle(bot.User, data)
 	} else {
 		err = errors.New("unknown msgType")
 	}
@@ -25,12 +24,17 @@ func HandleNetProto(bot *Bot, data []byte) (ack []byte, err error) {
 	return
 }
 
-// internal IPC
-func HandleIPCProto(bot *Bot, data []byte) (ack []byte, err error) {
+// forward chat message protocol
+func HandleForwardProto(bot *Bot, data []byte) (ack []byte, err error) {
 	return
 }
 
-// 定时消息
-func HandleTMProto(bot *Bot, data []byte) (ack []byte, err error) {
+// offline chat message protocol
+func HandleOffchatProto(bot *Bot, data []byte) (ack []byte, err error) {
+	return
+}
+
+// timer message protocol
+func HandleTickProto(bot *Bot, data []byte) (ack []byte, err error) {
 	return
 }

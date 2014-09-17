@@ -207,7 +207,7 @@ haproxy进行tcp负载均衡反向代理
 		=>服务端发送离线消息(group by from_id, sort by send_time)
 		to(uin32)+<from1+消息1(见redis离线消息字段)>+"\xef\xff"+<from2+消息2(见redis离线消息字段)>..., 每条消息用 \xef\xff 分割
 
-- 聊天 chat (发送消息同时实现http))
+- 聊天 chat (同时实现http))
 
         消息类型: 4
 

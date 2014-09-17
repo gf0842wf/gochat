@@ -31,7 +31,7 @@ func handle_chat(user *types.User, msg []byte) (ack []byte, err error) {
 	target := share.Clients.Get(to.(uint32))
 	if target == nil {
 		fmt.Println("forward:", to)
-		// TODO: 不在本服,发送到hub服务器,由它转发,传到hub服务器可以用[]interface{}类型
+		// TODO: 不在本服,发送到hub服务器,由它转发
 	} else {
 		targetUser := target.(*types.User)
 		targetUser.MQ <- msg
@@ -53,9 +53,8 @@ func handle_offchat(user *types.User, msg []byte) (ack []byte, err error) {
 	maxSize := BI[1]
 
 	uid := user.UID
-	// TODO: 通过uid获取离线消息
+	// TODO: 通过uid获取离线消息data
 	data := func(uid uint32, maxSize uint32) (data []byte) {
-		//cell := []interface{}{byte(0), uint64(time.Now().Unix()), byte(0), byte(0), byte(0), byte(0), []byte{98, 99, 100}}
 		return zpack.Pack('>', []interface{}{byte(3), uid, uint32(10002), byte(0), uint64(time.Now().Unix()), byte(0), byte(0), byte(0), byte(0), byte(98), byte(99), byte(100), byte('\xef'), byte('\xff'), uint32(10002), byte(0), uint64(time.Now().Unix()), byte(0), byte(0), byte(0), byte(0), byte(100), byte(101), byte(102)})
 	}(uid, maxSize.(uint32))
 

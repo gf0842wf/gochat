@@ -26,7 +26,6 @@ func (bot *Bot) OnConnectionLost(err error) {
 
 	bot.Ctrl <- false
 	if bot.User.UID > 0 {
-		//delete(bot.Manager.Clients, bot.User.UID)
 		share.Clients.Delete(bot.User.UID)
 	}
 }
@@ -49,12 +48,12 @@ func (bot *Bot) Handle() {
 				bot.User.Coder.Encode(ack)
 				bot.PutData(ack)
 			}
-		case data := <-bot.User.MQ: // 转发聊天消息
+		case data := <-bot.User.MQ: // 转发聊天(包括离线)消息
 			fmt.Println("MQ:", data)
 			// 加密
 			bot.User.Coder.Encode(data)
 			bot.PutData(data)
-		case data := <-bot.SendErrBox: // 发送失败,识为离线消息
+		case data := <-bot.SendErrBox: // 发送失败的消息,视为离线消息
 			// 解密
 			bot.User.Coder.Decode(data)
 			fmt.Println("offchat:", data)
