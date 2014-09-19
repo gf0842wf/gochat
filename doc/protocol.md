@@ -308,6 +308,10 @@ haproxy进行tcp负载均衡反向代理
 		失败:1(byte)
         成功:0(byte)+gid(24bytes)+uid1+uid2+..+"\xef\xff"+gid(24bytes)+...
 
+
+- 订阅发布
+采用管道 把管道作为map的key, 字典的value是一个set(里面存conn/user), 订阅此管道后,发布者发布时,服务器只需要遍历该key的set,然后循环发送给订阅者即可
+
 - 其他消息一律过滤
 
 ## IPC消息 ##
