@@ -14,7 +14,7 @@ import (
 创建 EndPoint 对象后需要调用 Init, InitCBs 和 Start 方法
 对外暴露的接口:
 1.使用 PutData 发送
-2.读取 RecvBox 管道处理收到的消息
+2.读取 RecvBox,SendErrBox 管道处理收到的消息和离线消息
 3.设置 OnConnectionLost 回调函数来处理断开连接, 可以为nil
 4.设置 RawRecv 回调函数来处理解析收到的消息, 可以为nil
 5.设置 RawSend 回调函数来处理封包发送的消息, 可以为nil

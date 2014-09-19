@@ -16,7 +16,7 @@ import (
 
 func handle_chat(user *types.User, msg []byte) (ack []byte, err error) {
 	if !user.Coder.Shaked && !user.Logined {
-		err = errors.New("not shaked or not logined")
+		err = errors.New("not shaked or not logined.")
 		return
 	}
 
@@ -42,7 +42,7 @@ func handle_chat(user *types.User, msg []byte) (ack []byte, err error) {
 
 func handle_offchat(user *types.User, msg []byte) (ack []byte, err error) {
 	if !user.Coder.Shaked && !user.Logined {
-		err = errors.New("not shaked or not logined")
+		err = errors.New("not shaked or not logined.")
 		return
 	}
 

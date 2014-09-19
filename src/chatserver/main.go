@@ -26,6 +26,7 @@ func (bot *Bot) OnConnectionLost(err error) {
 
 	bot.Ctrl <- false
 	if bot.User.UID > 0 {
+		// TODO: 发送hub服务器该用户下线
 		share.Clients.Delete(bot.User.UID)
 	}
 }
