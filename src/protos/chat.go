@@ -1,6 +1,6 @@
 package protos
 
-// 包括聊天,请求离线消息,通知
+// 包括聊天,请求离线消息
 
 import (
 	"encoding/binary"
@@ -24,7 +24,6 @@ func handle_chat(user *types.User, msg []byte) (ack []byte, err error) {
 	// 1(msgtype) + 4(to) + 4(from) + 1(online) + 4(gid) + 8(st) + n
 
 	// msg[0]: msgType
-	// subType := msg[1]
 
 	// to uid
 	to := binary.BigEndian.Uint32(msg[1:5])
@@ -50,7 +49,6 @@ func handle_getoffchat(user *types.User, msg []byte) (ack []byte, err error) {
 	}
 
 	// msg[0]: msgType
-	// subType := msg[1]
 
 	// maxSize
 	maxSize := binary.BigEndian.Uint32(msg[1:5])

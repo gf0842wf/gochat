@@ -3,6 +3,7 @@ package protos
 // 包括握手,心跳,登录
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 )
@@ -40,15 +41,15 @@ func handle_login(user *types.User, msg []byte) (ack []byte, err error) {
 		return
 	}
 
-	s := fmt.Sprint(">BI", len(msg)-5, "B")
-	BInB := zpack.Unpack(s, msg)
-	// BInB[0]:msgType
-	uid, password := BInB[1], BInB[2]
+	// msg[0]: msgType
+
+	uid := binary.BigEndian.Uint32(msg[1:5])
+	password := string(msg[5:])
 
 	if true { // TODO: 向hub服务器发送用户名密码请求登录(http接口?)
-		fmt.Println("Login:", uid.(uint32), string(password.([]byte)))
-		user.UID = uid.(uint32)
-		user.Password = string(password.([]byte))
+		fmt.Println("Login:", uid, password)
+		user.UID = uid
+		user.Password = password
 		user.Online = true
 		user.Logined = true
 		share.Clients.Set(user.UID, user)
