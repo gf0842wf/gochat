@@ -3,6 +3,7 @@ package protos
 // 包括聊天,请求离线消息,通知
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"time"
@@ -20,15 +21,17 @@ func handle_chat(user *types.User, msg []byte) (ack []byte, err error) {
 		return
 	}
 
-	_s := ">BIIBQ4B"
-	s := fmt.Sprint(_s, (len(msg) - zpack.CalcSize(_s)), "B")
+	// 1(msgtype) + 4(to) + 4(from) + 1(online) + 4(gid) + 8(st) + n
 
-	BIIBQ4BnB := zpack.Unpack(s, msg)
+	// msg[0]: msgType
+	// subType := msg[1]
 
-	// BIIBQ4BnB[0]: msgType
-	to := BIIBQ4BnB[1]
+	// to uid
+	to := binary.BigEndian.Uint32(msg[1:5])
+	// 把聊天发送时间改为服务器时间
+	binary.BigEndian.PutUint64(msg[14:22], uint64(time.Now().UnixNano()/1000000))
 
-	target := share.Clients.Get(to.(uint32))
+	target := share.Clients.Get(to)
 	if target == nil {
 		fmt.Println("forward:", to)
 		// TODO: 不在本服,发送到hub服务器,由它转发
@@ -40,23 +43,23 @@ func handle_chat(user *types.User, msg []byte) (ack []byte, err error) {
 	return
 }
 
-func handle_offchat(user *types.User, msg []byte) (ack []byte, err error) {
+func handle_getoffchat(user *types.User, msg []byte) (ack []byte, err error) {
 	if !user.Coder.Shaked && !user.Logined {
 		err = errors.New("not shaked or not logined.")
 		return
 	}
 
-	s := ">BI"
-	BI := zpack.Unpack(s, msg)
+	// msg[0]: msgType
+	// subType := msg[1]
 
-	// BI[0]: msgType
-	maxSize := BI[1]
+	// maxSize
+	maxSize := binary.BigEndian.Uint32(msg[1:5])
 
 	uid := user.UID
 	// TODO: 通过uid获取离线消息data
 	data := func(uid uint32, maxSize uint32) (data []byte) {
-		return zpack.Pack('>', []interface{}{byte(3), uid, uint32(10002), byte(0), uint64(time.Now().Unix()), byte(0), byte(0), byte(0), byte(0), byte(98), byte(99), byte(100), byte('\xef'), byte('\xff'), uint32(10002), byte(0), uint64(time.Now().Unix()), byte(0), byte(0), byte(0), byte(0), byte(100), byte(101), byte(102)})
-	}(uid, maxSize.(uint32))
+		return zpack.Pack('>', []interface{}{byte(3), uid, uint32(10002), byte(0), uint32(2), uint64(time.Now().UnixNano() / 1000000), byte(98), byte(99), byte(100), byte('\b'), byte('\r'), byte('\n'), uint32(10002), byte(0), uint32(2), uint64(time.Now().UnixNano() / 1000000), byte(100), byte(101), byte(102)})
+	}(uid, maxSize)
 
 	user.MQ <- data
 

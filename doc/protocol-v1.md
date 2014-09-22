@@ -1,8 +1,10 @@
 # 聊天服务器协议 #
 
-`所有时间为unix时间戳且为整数,单位ms,其中uid,gid,sid是数字(在redis中是字符串),0是默认分组`  
+`所有时间为unix时间戳且为整数,单位ms,其中uid(user id),gid(group id),sid(server id)是数字(在redis中是字符串),0是默认分组`  
 `now = int(time.time()*1000)`  
-`聊天消息不能含连续的\xef\xff`
+`聊天消息不能含连续的\a\r\n`  
+<pre>聊天消息中 [` `] 里面为超链接 </pre>
+`st 发送时间,是服务器时间,不是客户端时间,值等于`now``
 
 ## 前端部署 ##
 haproxy进行tcp负载均衡反向代理
@@ -78,7 +80,7 @@ haproxy进行tcp负载均衡反向代理
 	if `HEXISTS group:36 2`:
 		is_exist = 1
 	else:
-		`HSET group:`uid` 同事`
+		`HSET group:`uid` 2`
 
 	2.用户 36 删除分组 2
 	is_exist = 1
@@ -126,60 +128,47 @@ haproxy进行tcp负载均衡反向代理
 ## 状态 ##
 采用redis key过期设置3天
 
-	用户所在服务器(kv) status:uid:`uid`=>`sid` # sid:server id
-	服务器所有用户(zset) status:sid:`sid`=>uid=>now # uid作为member, now作为score(建立连接时的时间戳)
+	用户所在服务器(kv) status_uid:`uid`=>`sid`
+	服务器所有用户(zset) status_sid:`sid`=>uid=>now # uid作为member, now作为score(建立连接时的时间戳)
 	
 	1.用户36在服务器2上线
-	`SET status:uid:36 2`
-	`ZADD status:sid:2 `now` 36`
+	`SET status_uid:36 2`
+	`ZADD status_sid:2 `now` 36`
 
 	2.用户36所在服务器(是否在线)
-	`GET status:uid:36`
+	`GET status_uid:36`
 
 	3.用户36下线
-	sid = `GET status:uid:36`
-	`ZREM status:sid:`sid` 36`
-	`DEL status:uid:36`
+	sid = `GET status_uid:36`
+	`ZREM status_sid:`sid` 36`
+	`DEL status_uid:36`
 
 	4.服务器2的用户数
-	`ZCARD status:sid:2`
+	`ZCARD status_sid:2`
 	
 	5.服务器所有用户数
-	`KEYS status:uid*`
+	`KEYS status_uid*`
 
 	# TODO: 其他状态统计信息
 
 ## 离线消息 ##
 采用redis
-
-	用户到xx的离线消息(hash) msg:offline:`to_uid`=>`from_uid`=>`message`, 过期时间1年
-	message:(json)
+	
+	(list) msg_offline:`to_uid`=>`message`
+	过期时间1年
+	定期检查,最大1000条
+	message:(json),下面是必须字段
 	{
-		"line":0,
-		"st":0, # 发送时间,unix时间戳(单位ms, uint64)
-        "gid":0,
-		"flg1":byte,
-		"flg2":byte,
-		"flg3":byte,
-		"flg4":byte,
+		"from_id":uint32,
+		"line":byte, # 0-离线消息, 1-在线消息
+        "gid":uint32,
+		"st":uint64,
 		"ctx":"", # 消息内容
 	}
 
 ## 在线消息 ##
-先保存在redis
+存储在mysql,定期删除
 
-    用户到xx的在线消息(hash) msg:online:`to_uid`=>`from_uid`=>`message`, 过期时间1天,如果使用http聊天,过期时间1年.(选择是否持久化到mysql)
-	message:(json)
-	{
-		"line":1,
-		"st":0, # 发送时间,unix时间戳(单位ms, uint64)
-        "gid":0,
-		"flg1":byte,
-		"flg2":byte,
-		"flg3":byte,
-		"flg4":byte,
-		"ctx":"", # 消息内容
-	}
 
 ## TCP消息协议 ##
 中文采用utf8编码  
@@ -215,7 +204,7 @@ haproxy进行tcp负载均衡反向代理
 
 		<=客户端请求离线消息 请求最大条数uint32, 0-全部请求 (服务器是队列存储,请求过就删除)
 		=>服务端发送离线消息(group by from_id, sort by send_time)
-		to(uin32)+<from1+消息1(见redis离线消息字段)>+"\xef\xff"+<from2+消息2(见redis离线消息字段)>..., 每条消息用 \xef\xff 分割
+		to(uin32)+<消息1>+"\a\r\n"+<消息2>..., 每条消息用 \a\r\n 分割
 
 - 聊天 chat
 
@@ -227,12 +216,8 @@ haproxy进行tcp负载均衡反向代理
 			"to":38, # target_uid    uint32, [1, 50)系统预留, [50, 150)聊天室, [150, 1000)预留, [1000, +∞)用户
 			"from":36, # uid    uint32, [1, 50)系统预留, [50, 150)聊天室, [150, 1000)预留, [1000, +∞)用户
 			"line":byte, # 0-离线消息, 1-在线消息
-			"st":0, # 发送时间,unix时间戳(单位ms, uint64)
-            "gid":byte,
-			"flg1":byte,
-			"flg2":byte,
-			"flg3":byte,
-			"flg4":byte,
+            "gid":uint32,
+			"st":uint64,
 			"ctx":"", # 消息内容
     	}
 
@@ -249,7 +234,26 @@ haproxy进行tcp负载均衡反向代理
 ## HTTP消息协议 ##
 中文采用utf8编码  
 
-`-H X-GOCHAT-TOKEN: uuid` uuid-其它接口登陆后分配,所有http请求头都需要带此token
+`-H X-GOCHAT-TOKEN: uuid` uuid-其它接口登陆后分配,所有http请求头都需要带此token,token有效期为3小时  
+`-H X-GOCHAT-UID: uid`
+
+	code:
+	1-uid/password 错误
+	2-token失效,如果token失效,需要调用登陆接口,重新换取token,简单的办法是2小时登陆一次,刷新token
+
+- 登陆
+
+		POST "/chat/login"
+		<=
+		{
+			"uid":uint32,
+			"password":"",
+		}
+		=>
+		{
+			"code":byte(0-ok,其它-ng),
+			"token":"26c0ac40-4222-11e4-861a-b8ee657d7c26", # uuid
+		}
 
 - 命令 cmd
 
@@ -261,7 +265,7 @@ haproxy进行tcp负载均衡反向代理
         }
         =>
         {
-            "code":byte(0-ok,其它-ng)
+            "code":byte,(0-ok,其它-ng)
             "gid":2
         }
         
@@ -309,7 +313,7 @@ haproxy进行tcp负载均衡反向代理
             "to":38,
             "from":36,
             "gid":2, # 发往对方哪个分组的
-            "st":`now`, # send time
+			"st":0, # 客户端可以传0值,最好传`now`
             "ctx":"hello",
         }
         =>{"code":byte(0-ok,其它-ng)}
@@ -318,20 +322,57 @@ haproxy进行tcp负载均衡反向代理
 - push(服务器推送)(轮询调用此接口拉取消息)
 
         POST "/chat/message/push"
-        <=
+		<=
+		{
+			"max_num":0, # 请求最大条数, 0为不限制
+		}
+        =>
         {
+			"code":byte,(0-ok,其它-ng)
+			"interval":2000, # 下次轮询时间间隔, 由服务端动态决定,客户端及时刷新此值,单位ms
+
             "to":38,
             "msgs":
             [
                 {
                     "from":36,
+					"line":byte, # 0-离线消息, 1-在线消息
                     "gid":2,
-                    "st":`now`, # send time
+                    "st":`now`,
                     "ctx":"hello",
                 },
             ]
         }
-        =>{"code":byte(0-ok,其它-ng)}
+
+- 转存图片
+
+		注意headers
+		客户端转存成功后获得转存的url后,此url嵌入到聊天消息, eg: 嗨,看这个图[`/static/chat/img/xxx.jpg`]图中ooxx是那个意思
+
+		POST "/chat/image/upload", name=>image
+		=>
+		{
+			"code": 0, 
+			"image":"",
+			"thumb":"",
+		}
+
+- 转存语音
+
+		注意headers
+
+		POST "/chat/sound/upload", name=>sound
+		=>
+		{
+			"code": 0, 
+			"sound":"",
+		}
+
+- 自定义表情
+
+		表情存在服务器端,以url方式提供,客户端最好缓存
+		表情映射表
+		/cy:static/chat/expression/cy.jpg
 
 ## IPC消息 ##
 

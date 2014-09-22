@@ -12,10 +12,7 @@ func init() {
 		1: handle_nop,
 		2: handle_login,
 
-		3: handle_offchat,
+		3: handle_getoffchat,
 		4: handle_chat,
-
-		//5: handle_cmd,
-
 	}
 }

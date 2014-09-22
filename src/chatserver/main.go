@@ -49,7 +49,7 @@ func (bot *Bot) Handle() {
 				bot.User.Coder.Encode(ack)
 				bot.PutData(ack)
 			}
-		case data := <-bot.User.MQ: // 转发聊天(包括离线)消息
+		case data := <-bot.User.MQ: // 转发聊天消息
 			fmt.Println("MQ:", data)
 			// 加密
 			bot.User.Coder.Encode(data)
@@ -57,6 +57,7 @@ func (bot *Bot) Handle() {
 		case data := <-bot.SendErrBox: // 发送失败的消息,视为离线消息
 			// 解密
 			bot.User.Coder.Decode(data)
+			// TODO: 离线消息入库(发到hub再入库?)
 			fmt.Println("offchat:", data)
 		}
 	}
