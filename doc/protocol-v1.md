@@ -233,7 +233,9 @@ haproxy进行tcp负载均衡反向代理
 
 ## HTTP消息协议 ##
 中文采用utf8编码  
-
+http服务器同时连到hub服务器  
+http服务器接受客户端发送的消息 发送给 hub服务器和redis存储在msg_web_online  
+http服务器推送给客户端的消息来源 msg_offline和msg_web_online  
 `-H X-GOCHAT-TOKEN: uuid` uuid-其它接口登陆后分配,所有http请求头都需要带此token,token有效期为3小时  
 `-H X-GOCHAT-UID: uid`
 
