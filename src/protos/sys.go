@@ -46,7 +46,7 @@ func handle_login(user *types.User, msg []byte) (ack []byte, err error) {
 	uid := binary.BigEndian.Uint32(msg[1:5])
 	password := string(msg[5:])
 
-	if true { // TODO: 向hub服务器发送用户名密码请求登录(http接口?)
+	if uid == 10001 && password == "123456" { // TODO: 向hub服务器发送用户名密码请求登录(http接口?)
 		fmt.Println("Login:", uid, password)
 		user.UID = uid
 		user.Password = password
@@ -56,8 +56,8 @@ func handle_login(user *types.User, msg []byte) (ack []byte, err error) {
 		// TODO: 通知hub服务器该用户登录
 		ack = zpack.Pack('>', []interface{}{byte(2), byte(0)})
 	} else {
-		err = errors.New("login failed")
-		//ack = zpack.Pack('>', []interface{}{byte(2), byte(1)})
+		//err = errors.New("login failed")
+		ack = zpack.Pack('>', []interface{}{byte(2), byte(1)})
 	}
 
 	return
