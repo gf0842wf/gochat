@@ -37,7 +37,9 @@ func (bot *Bot) Handle() {
 		select {
 		case data := <-bot.RecvBox:
 			// 解密
+			fmt.Println("raw recv:", data)
 			bot.User.Coder.Decode(data)
+			fmt.Println("de raw recv:", data)
 			ack, err := HandleNetProto(bot, data)
 			if err != nil {
 				// 断开连接
