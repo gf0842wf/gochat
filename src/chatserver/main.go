@@ -58,7 +58,7 @@ func (bot *Bot) Handle() {
 		case data := <-bot.SendErrBox: // 发送失败的消息,视为离线消息
 			// 解密
 			bot.User.Coder.Decode(data)
-			// TODO: 离线消息入库(发到hub再入库?)
+			// TODO: 离线消息入库,只入库聊天消息,把聊天消息状态改为离线
 			fmt.Println("offchat:", data)
 		}
 	}

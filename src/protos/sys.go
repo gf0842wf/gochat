@@ -56,8 +56,8 @@ func handle_login(user *types.User, msg []byte) (ack []byte, err error) {
 		// TODO: 通知hub服务器该用户登录
 		ack = zpack.Pack('>', []interface{}{byte(2), byte(0)})
 	} else {
-		err = errors.New("login failed")
-		//ack = zpack.Pack('>', []interface{}{byte(2), byte(1)})
+		//err = errors.New("login failed")
+		ack = zpack.Pack('>', []interface{}{byte(2), byte(1)})
 	}
 
 	return

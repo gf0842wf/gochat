@@ -7,6 +7,7 @@ import (
 
 // uid 2 user
 var Clients *zmap.SafeMap
+
 var HubClient *tcpclient.Connection
 
 func init() {
