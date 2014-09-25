@@ -39,7 +39,7 @@ func (bot *Bot) Handle() {
 			// 解密
 			fmt.Println("raw recv:", data)
 			bot.User.Coder.Decode(data)
-			fmt.Println("de raw recv:", data)
+			fmt.Println("de raw recv:", data, bot.User.Coder.CryptKey)
 			ack, err := HandleNetProto(bot, data)
 			if err != nil {
 				// 断开连接

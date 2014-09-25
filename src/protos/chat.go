@@ -30,6 +30,8 @@ func handle_chat(user *types.User, msg []byte) (ack []byte, err error) {
 	// 把聊天发送时间改为服务器时间
 	binary.BigEndian.PutUint64(msg[14:22], uint64(time.Now().UnixNano()/1000000))
 
+	fmt.Println("from:", binary.BigEndian.Uint32(msg[5:9]), "to:", to)
+
 	target := share.Clients.Get(to)
 	if target == nil {
 		fmt.Println("forward:", to)
