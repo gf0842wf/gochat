@@ -125,6 +125,13 @@ haproxy进行tcp负载均衡反向代理
     1.用户36,密码'1123'登陆认证
     `GET user:36` == '1123'
 
+## PUB/SUB ##
+采用redis存储订阅关系 
+    
+    channel和订阅者关系(set)
+    subscribe:`channel`=>set(uid1,uid2,...)
+
+
 ## 状态 ##
 采用redis key过期设置3天
 
@@ -225,8 +232,11 @@ haproxy进行tcp负载均衡反向代理
 
         消息类型: 5
 
-- 订阅发布
-采用管道 把管道作为map的key, 字典的value是一个set(里面存conn/user), 订阅此管道后,发布者发布时,服务器只需要遍历该key的set,然后循环发送给订阅者即可
+- 订阅发布  
+×采用管道 把管道作为map的key, 字典的value是一个set(里面存conn/user), 订阅此管道后,发布者发布时,服务器只需要遍历该key的set,然后循环发送给订阅者即可
+        
+        消息类型: 6
+        TODO:同时实现http接口
 
 - 其他消息一律过滤
 
@@ -333,7 +343,8 @@ http服务器推送给客户端的消息来源 msg_offline和msg_web_online
 			"code":byte,(0-ok,其它-ng)
 			"interval":2000, # 下次轮询时间间隔, 由服务端动态决定,客户端及时刷新此值,单位ms
 
-            "to":38,
+            # "to":38,
+            "count":1,
             "msgs":
             [
                 {
